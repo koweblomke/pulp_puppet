@@ -138,6 +138,16 @@ git_checkout()
 build_puppet_modules()
 {
   echo "building puppet modules"
+  for path in $(find . -name init.pp)
+  do
+    path=$(dirname $path)
+    name=$(basename $path)
+    if [ "$name" == "manifests" ]
+    then
+      path=$(dirname $path)
+      echo "puppet module build : $path"
+    fi
+  done
 }
 
 build_manifest()
