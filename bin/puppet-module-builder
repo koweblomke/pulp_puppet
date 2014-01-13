@@ -69,6 +69,8 @@ def get_options():
     (opts, args) = parser.parse_args()
     if not opts.output_dir:
         opts.output_dir = opts.working_dir
+    if not opts.path and opts.url:
+        opts.path = os.path.basename(opts.url)
     return opts
 
 
@@ -89,7 +91,6 @@ def git_clone(options):
         # cloning not requested
         return
     shell('git clone %s' % options.url)
-    chdir(os.path.basename(options.url))
 
 
 def git_checkout(options):
