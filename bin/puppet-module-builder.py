@@ -13,6 +13,7 @@
 
 import os
 import sys
+import shutil
 
 from gettext import gettext as _
 from optparse import OptionParser
@@ -119,10 +120,20 @@ def find_modules():
         yield module_dir
 
 
+def publish_module(module_dir, publish_dir):
+    for name in os.listdir(module_dir):
+        if not name.endswith('.tar.gz'):
+            continue
+        path = os.path.join(module_dir, name)
+        shutil.copy(path, publish_dir)
+        print 'cp %s %s' % (path, publish_dir)
+
+
 def build_puppet_modules(options):
     for path in find_modules():
         shell('puppet module build %s' % path)
-        shell('cp %s/pkg/*.tar.gz %s' % (path, options.output_dir))
+        pkg_dir = os.path.join(path, 'pkg')
+        publish_module(pkg_dir, options.output_dir)
 
 
 def digest(path):
