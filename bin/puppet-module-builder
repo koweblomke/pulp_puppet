@@ -16,7 +16,7 @@ import sys
 import shutil
 
 from gettext import gettext as _
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 from subprocess import Popen, PIPE
 from hashlib import sha256
 
@@ -36,11 +36,11 @@ BRANCH = _('the name of a git branch to be checked out.')
 
 TAG = _('the name of a git tag to be checked out.')
 
-WORKING_DIR = _('the working directory. default: current directory.')
+WORKING_DIR = _('set the working directory. default: current directory.')
 
-OUTPUT_DIR = _('the output location. dDefault: current directory.')
+OUTPUT_DIR = _('set the output directory. default: current directory.')
 
-CLEAN = _('delete cloned repositories after building.')
+CLEAN = _('delete cloned repositories before and after building.')
 
 
 def chdir(path):
@@ -62,13 +62,15 @@ def shell(command, exit_on_err=True):
 
 def get_options():
     parser = OptionParser()
-    parser.add_option('-u', '--url', help=URL)
-    parser.add_option('-b', '--branch', help=BRANCH)
-    parser.add_option('-t', '--tag', help=TAG)
-    parser.add_option('-p', '--path', help=PATH)
     parser.add_option('-w', '--working-dir', dest='working_dir', help=WORKING_DIR)
     parser.add_option('-o', '--output-dir', dest='output_dir', help=OUTPUT_DIR)
     parser.add_option('-c', '--clean', default=False, action='store_true', help=CLEAN)
+    git = OptionGroup(parser, 'git')
+    git.add_option('-u', '--url', help=URL)
+    git.add_option('-b', '--branch', help=BRANCH)
+    git.add_option('-t', '--tag', help=TAG)
+    parser.add_option('-p', '--path', help=PATH)
+    parser.add_option_group(git)
     (opts, args) = parser.parse_args()
     if not opts.working_dir:
         if args:
