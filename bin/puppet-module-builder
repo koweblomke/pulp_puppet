@@ -20,10 +20,17 @@ from optparse import OptionParser
 from subprocess import Popen, PIPE
 from hashlib import sha256
 
+
+PKG_DIR = 'pkg'
+ARCHIVE_SUFFIX = '.tar.gz'
+
+
 PATH = _('the working directory. default: current directory.')
 
 URL = _('the URL to a git repository to be cloned. repositories'
-        'will be cloned into the working directory.')
+        ' will be cloned into the working directory. cloning will'
+        ' set the --path to the repository root when --path is'
+        ' not specified.')
 
 BRANCH = _('the name of a git branch to be checked out.')
 
@@ -32,8 +39,6 @@ TAG = _('the name of a git tag to be checked out.')
 WORKING_DIR = _('the working directory. default: current directory.')
 
 OUTPUT_DIR = _('the output location. dDefault: current directory.')
-
-RECURSIVE = _('recursively process directories looking for puppet modules.')
 
 CLEAN = _('delete cloned repositories after building.')
 
@@ -64,7 +69,6 @@ def get_options():
     parser.add_option('-p', '--path', help=PATH)
     parser.add_option('-w', '--working-dir', default=_dir, dest='working_dir', help=WORKING_DIR)
     parser.add_option('-o', '--output-dir', dest='output_dir', help=OUTPUT_DIR)
-    parser.add_option('-r', '--recursive', default=False, action='store_true', help=RECURSIVE)
     parser.add_option('-c', '--clean', default=False, action='store_true', help=CLEAN)
     (opts, args) = parser.parse_args()
     if not opts.output_dir:
@@ -114,7 +118,7 @@ def find_modules():
             continue
         if _path[-2] != 'manifests':
             continue
-        if len(_path) > 3 and _path[-4] == 'pkg':
+        if len(_path) > 3 and _path[-4] == PKG_DIR:
             continue
         module_dir = '/'.join(_path[:-2])
         yield module_dir
@@ -123,7 +127,7 @@ def find_modules():
 def publish_module(module_dir, publish_dir):
     shell('mkdir -p %s' % publish_dir)
     for name in os.listdir(module_dir):
-        if not name.endswith('.tar.gz'):
+        if not name.endswith(ARCHIVE_SUFFIX):
             continue
         path = os.path.join(module_dir, name)
         shutil.copy(path, publish_dir)
@@ -133,7 +137,7 @@ def publish_module(module_dir, publish_dir):
 def build_puppet_modules(options):
     for path in find_modules():
         shell('puppet module build %s' % path)
-        pkg_dir = os.path.join(path, 'pkg')
+        pkg_dir = os.path.join(path, PKG_DIR)
         publish_module(pkg_dir, options.output_dir)
 
 
@@ -149,7 +153,7 @@ def build_manifest(options):
     chdir(options.output_dir)
     with open('PULP_MANIFEST', 'w+') as fp:
         for path in os.listdir('.'):
-            if not path.endswith('.tar.gz'):
+            if not path.endswith(ARCHIVE_SUFFIX):
                 continue
             fp.write(path)
             fp.write(',%s' % digest(path))
