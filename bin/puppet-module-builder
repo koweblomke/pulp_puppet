@@ -20,6 +20,7 @@ from optparse import OptionParser
 from subprocess import Popen, PIPE
 from hashlib import sha256
 
+PATH = _('The working directory. Default: current directory.')
 
 URL = _('The URL to a git repository to be cloned. Repositories'
         'will be cloned into the current directory or the location'
@@ -29,13 +30,17 @@ BRANCH = _('The name of a git branch to be checked out.')
 
 TAG = _('The name of a git tag to be checked out.')
 
-WORKING_DIR = _('The working directory used for git cloning. Default: current directory.')
-
 OUTPUT_DIR = _('The output location.')
 
 RECURSIVE = _('Recursively process directories looking for puppet modules.')
 
 CLEAN = _('Delete cloned repositories after building.')
+
+
+def chdir(path):
+    if path:
+        print 'cd %s' % path
+        os.chdir(path)
 
 
 def shell(command, exit_on_err=True):
@@ -55,19 +60,17 @@ def get_options():
     parser.add_option('-u', '--url', help=URL)
     parser.add_option('-b', '--branch', help=BRANCH)
     parser.add_option('-t', '--tag', help=TAG)
-    parser.add_option('-w', '--working-dir', dest='working_dir', help=WORKING_DIR)
+    parser.add_option('-p', '--path', help=OUTPUT_DIR)
     parser.add_option('-o', '--output-dir', dest='output_dir', help=OUTPUT_DIR)
     parser.add_option('-r', '--recursive', default=False, action='store_true', help=RECURSIVE)
     parser.add_option('-c', '--clean', default=False, action='store_true', help=CLEAN)
     (opts, args) = parser.parse_args()
     if args:
-        opts.path = args[0]
+        opts.working_dir = args[0]
     else:
-        opts.path = cwd
+        opts.working_dir = cwd
     if not opts.output_dir:
-        opts.output_dir = opts.path
-    if not opts.working_dir:
-        opts.working_dir = opts.path
+        opts.output_dir = opts.working_dir
     return opts
 
 
@@ -87,10 +90,8 @@ def git_clone(options):
     if not options.url:
         # cloning not requested
         return
-    _dir = os.getcwd()
-    os.chdir(options.working_dir)
     shell('git clone %s' % options.url)
-    os.chdir(_dir)
+    chdir(os.path.basename(options.url))
 
 
 def git_checkout(options):
@@ -121,6 +122,7 @@ def find_modules():
 
 
 def publish_module(module_dir, publish_dir):
+    shell('mkdir -p %s' % publish_dir)
     for name in os.listdir(module_dir):
         if not name.endswith('.tar.gz'):
             continue
@@ -145,7 +147,7 @@ def digest(path):
 
 def build_manifest(options):
     _dir = os.getcwd()
-    os.chdir(options.output_dir)
+    chdir(options.output_dir)
     with open('PULP_MANIFEST', 'w+') as fp:
         for path in os.listdir('.'):
             if not path.endswith('.tar.gz'):
@@ -153,13 +155,14 @@ def build_manifest(options):
             fp.write(path)
             fp.write(',%s' % digest(path))
             fp.write(',%s\n' % os.path.getsize(path))
-    os.chdir(_dir)
+    chdir(_dir)
 
 
 def main():
     options = get_options()
-    os.chdir(options.path)
+    chdir(options.working_dir)
     git_clone(options)
+    chdir(options.path)
     options.origin = find_origin()
     git_checkout(options)
     build_puppet_modules(options)
