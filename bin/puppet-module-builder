@@ -61,16 +61,20 @@ def shell(command, exit_on_err=True):
 
 
 def get_options():
-    _dir = os.getcwd()
     parser = OptionParser()
     parser.add_option('-u', '--url', help=URL)
     parser.add_option('-b', '--branch', help=BRANCH)
     parser.add_option('-t', '--tag', help=TAG)
     parser.add_option('-p', '--path', help=PATH)
-    parser.add_option('-w', '--working-dir', default=_dir, dest='working_dir', help=WORKING_DIR)
+    parser.add_option('-w', '--working-dir', dest='working_dir', help=WORKING_DIR)
     parser.add_option('-o', '--output-dir', dest='output_dir', help=OUTPUT_DIR)
     parser.add_option('-c', '--clean', default=False, action='store_true', help=CLEAN)
     (opts, args) = parser.parse_args()
+    if not opts.working_dir:
+        if args:
+            opts.working_dir = args[0]
+        else:
+            opts.working_dir = os.getcwd()
     if not opts.output_dir:
         opts.output_dir = opts.working_dir
     if not opts.path and opts.url:
@@ -81,6 +85,7 @@ def get_options():
 def set_origin(options):
     status, output = shell('git status', False)
     if status != 0:
+        options.origin = None
         return
     status, output = shell('git remote show -n origin')
     for line in output.split('\n'):
