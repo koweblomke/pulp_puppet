@@ -20,21 +20,22 @@ from optparse import OptionParser
 from subprocess import Popen, PIPE
 from hashlib import sha256
 
-PATH = _('The working directory. Default: current directory.')
+PATH = _('the working directory. default: current directory.')
 
-URL = _('The URL to a git repository to be cloned. Repositories'
-        'will be cloned into the current directory or the location'
-        'specified by --path.')
+URL = _('the URL to a git repository to be cloned. repositories'
+        'will be cloned into the working directory.')
 
-BRANCH = _('The name of a git branch to be checked out.')
+BRANCH = _('the name of a git branch to be checked out.')
 
-TAG = _('The name of a git tag to be checked out.')
+TAG = _('the name of a git tag to be checked out.')
 
-OUTPUT_DIR = _('The output location.')
+WORKING_DIR = _('the working directory. default: current directory.')
 
-RECURSIVE = _('Recursively process directories looking for puppet modules.')
+OUTPUT_DIR = _('the output location. dDefault: current directory.')
 
-CLEAN = _('Delete cloned repositories after building.')
+RECURSIVE = _('recursively process directories looking for puppet modules.')
+
+CLEAN = _('delete cloned repositories after building.')
 
 
 def chdir(path):
@@ -55,26 +56,23 @@ def shell(command, exit_on_err=True):
 
 
 def get_options():
-    cwd = os.getcwd()
+    _dir = os.getcwd()
     parser = OptionParser()
     parser.add_option('-u', '--url', help=URL)
     parser.add_option('-b', '--branch', help=BRANCH)
     parser.add_option('-t', '--tag', help=TAG)
-    parser.add_option('-p', '--path', help=OUTPUT_DIR)
+    parser.add_option('-p', '--path', help=PATH)
+    parser.add_option('-w', '--working-dir', default=_dir, dest='working_dir', help=WORKING_DIR)
     parser.add_option('-o', '--output-dir', dest='output_dir', help=OUTPUT_DIR)
     parser.add_option('-r', '--recursive', default=False, action='store_true', help=RECURSIVE)
     parser.add_option('-c', '--clean', default=False, action='store_true', help=CLEAN)
     (opts, args) = parser.parse_args()
-    if args:
-        opts.working_dir = args[0]
-    else:
-        opts.working_dir = cwd
     if not opts.output_dir:
         opts.output_dir = opts.working_dir
     return opts
 
 
-def find_origin():
+def set_origin(options):
     status, output = shell('git status', False)
     if status != 0:
         return
@@ -83,7 +81,7 @@ def find_origin():
         line = line.strip()
         if line.startswith('Fetch URL:'):
             url = line.split(':', 1)[1]
-            return url.strip()
+            options.origin = url.strip()
 
 
 def git_clone(options):
@@ -158,15 +156,25 @@ def build_manifest(options):
     chdir(_dir)
 
 
+def clean(options):
+    if options.url and options.clean:
+        path = os.path.join(options.working_dir, os.path.basename(options.url))
+        shell('rm -rf %s' % path)
+
+
 def main():
+    _dir = os.getcwd()
     options = get_options()
+    clean(options)
     chdir(options.working_dir)
     git_clone(options)
     chdir(options.path)
-    options.origin = find_origin()
+    set_origin(options)
     git_checkout(options)
     build_puppet_modules(options)
     build_manifest(options)
+    chdir(_dir)
+    clean(options)
 
 
 if __name__ == '__main__':
